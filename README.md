@@ -1,2 +1,8 @@
 # SudokuDLX
 Light speed sudoku soling algorithm featuring the dancing links technique 
+
+Recources:
+
+[Research:](https://docs.google.com/document/d/1QE-hWEX2Ob7reLcK6cAKCzXfE1c5jjmsXxfhzPc4Jb4/edit?usp=sharing)   -->
+
+[Presentation:](https://docs.google.com/presentation/d/1snFATBnYyF67QqVhr9U4-7NhtG4ReX8nK3pKWvlAyWM/edit?usp=sharing)   -->
