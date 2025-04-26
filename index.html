@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sudoku Solver Comparison</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    .container { display: flex; gap: 40px; }
+    .panel { text-align: center; }
+    table { border-collapse: collapse; margin: 10px auto; }
+    td { width: 30px; height: 30px; text-align: center; 
+         border: 1px solid #333; font-size: 18px; }
+    .thick-border-top   { border-top:   3px solid #333; }
+    .thick-border-left  { border-left:  3px solid #333; }
+    .thick-border-right { border-right: 3px solid #333; }
+    .thick-border-bot   { border-bottom:3px solid #333; }
+    select, button { padding: 6px 12px; margin: 5px; }
+    .info { margin-top: 8px; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <h1>Sudoku Solver: Backtracking vs. Dancing Links</h1>
+
+  <div>
+    <label for="puzzleSelect">Choose a puzzle:</label>
+    <select id="puzzleSelect"></select>
+    <button id="loadPuzzleBtn">Load Puzzle</button>
+    <button id="solveBtn">Solve Both</button>
+  </div>
+
+  <div class="container">
+    <div class="panel">
+      <h2>Input Puzzle</h2>
+      <table id="inputGrid"></table>
+    </div>
+    <div class="panel">
+      <h2>Backtracking Solution</h2>
+      <table id="btGrid"></table>
+      <div id="btInfo" class="info"></div>
+    </div>
+    <div class="panel">
+      <h2>DLX Solution</h2>
+      <table id="dlxGrid"></table>
+      <div id="dlxInfo" class="info"></div>
+    </div>
+  </div>
+
+<script>
+/***** Hard-coded puzzles *****/
+const puzzles = [
+  { name: "Puzzle 1",
+    str: "530070000600195000098000060800060003400803001700020006060000280000419005000080079" },
+  { name: "Puzzle 2",
+    str: "100007090030020008009600500005300900010080002600004000059000073002010080070000100" }
+];
+
+/***** Utility to parse and render grids *****/
+function parsePuzzle(str) {
+  const grid = [];
+  for(let r=0; r<9; r++){
+    grid[r] = [];
+    for(let c=0; c<9; c++){
+      const ch = str[r*9 + c];
+      grid[r][c] = (ch === '0' || ch === '.') ? 0 : parseInt(ch);
+    }
+  }
+  return grid;
+}
+function renderGrid(grid, tableId) {
+  const table = document.getElementById(tableId);
+  table.innerHTML = "";
+  for(let r=0; r<9; r++){
+    const row = table.insertRow();
+    for(let c=0; c<9; c++){
+      const cell = row.insertCell();
+      cell.textContent = grid[r][c] === 0 ? "" : grid[r][c];
+      // thick borders for 3x3 blocks
+      if(r % 3 === 0) cell.classList.add("thick-border-top");
+      if(c % 3 === 0) cell.classList.add("thick-border-left");
+      if(c === 8)      cell.classList.add("thick-border-right");
+      if(r === 8)      cell.classList.add("thick-border-bot");
+    }
+  }
+}
+
+/***** Backtracking Solver *****/
+let btCalls = 0;
+function validBT(grid, r, c, val) {
+  for(let i=0;i<9;i++){
+    if(grid[r][i]===val||grid[i][c]===val) return false;
+  }
+  const br = Math.floor(r/3)*3, bc = Math.floor(c/3)*3;
+  for(let i=0;i<3;i++)for(let j=0;j<3;j++){
+    if(grid[br+i][bc+j]===val) return false;
+  }
+  return true;
+}
+function findEmpty(grid){
+  for(let r=0;r<9;r++) for(let c=0;c<9;c++){
+    if(grid[r][c]===0) return {r,c};
+  }
+  return null;
+}
+function solveBT(grid){
+  btCalls++;
+  const e = findEmpty(grid);
+  if(!e) return true;
+  const {r,c} = e;
+  for(let n=1;n<=9;n++){
+    if(validBT(grid,r,c,n)){
+      grid[r][c] = n;
+      if(solveBT(grid)) return true;
+      grid[r][c] = 0;
+    }
+  }
+  return false;
+}
+function backtrackingSolve(origGrid){
+  const grid = origGrid.map(r=>r.slice());
+  btCalls = 0;
+  const t0 = performance.now();
+  solveBT(grid);
+  const t1 = performance.now();
+  return { grid, time: (t1 - t0).toFixed(2), calls: btCalls };
+}
+
+/***** Dancing Links Solver *****/
+class DLXNode {
+  constructor(){ this.left=this; this.right=this; this.up=this; this.down=this;
+                   this.column = null; this.rowID=null; }
+}
+class ColumnNode extends DLXNode {
+  constructor(name){
+    super();
+    this.name = name;
+    this.size = 0;
+    this.column = this;
+  }
+}
+function buildDLX(grid){
+  // header + 324 columns
+  const header = new ColumnNode("header");
+  header.left = header; header.right = header;
+  const columns = [];
+  for(let i=0;i<324;i++){
+    const col = new ColumnNode(i);
+    columns.push(col);
+    // link into header's horizontal list
+    col.right = header;
+    col.left = header.left;
+    header.left.right = col;
+    header.left = col;
+    col.up = col; col.down = col;
+  }
+  // helper to add one row
+  function addRow(rowID, colIndices){
+    let first = null;
+    for(const ci of colIndices){
+      const col = columns[ci];
+      const node = new DLXNode();
+      node.column = col;
+      node.rowID = rowID;
+      // vertical link
+      node.down = col;
+      node.up = col.up;
+      col.up.down = node;
+      col.up = node;
+      col.size++;
+      // horizontal link
+      if(!first){
+        first = node;
+      } else {
+        node.right = first;
+        node.left = first.left;
+        first.left.right = node;
+        first.left = node;
+      }
+    }
+  }
+  // build rows for each possible placement
+  for(let r=0; r<9; r++){
+    for(let c=0; c<9; c++){
+      const v = grid[r][c];
+      for(let n=1;n<=9;n++){
+        if(v!==0 && v!==n) continue;
+        const rowID = {r,c,n};
+        const cols = [];
+        cols.push(r*9 + c);                 // cell constraint
+        cols.push(81 + r*9 + (n-1));        // row# constraint
+        cols.push(162 + c*9 + (n-1));       // col# constraint
+        const b = Math.floor(r/3)*3 + Math.floor(c/3);
+        cols.push(243 + b*9 + (n-1));       // block# constraint
+        addRow(rowID, cols);
+      }
+    }
+  }
+  return {header};
+}
+function cover(col){
+  col.right.left = col.left;
+  col.left.right = col.right;
+  for(let i=col.down; i!==col; i=i.down){
+    for(let j=i.right; j!==i; j=j.right){
+      j.down.up = j.up;
+      j.up.down = j.down;
+      j.column.size--;
+    }
+  }
+}
+function uncover(col){
+  for(let i=col.up; i!==col; i=i.up){
+    for(let j=i.left; j!==i; j=j.left){
+      j.column.size++;
+      j.down.up = j;
+      j.up.down = j;
+    }
+  }
+  col.right.left = col;
+  col.left.right = col;
+}
+let dlxSolution = null, dlxOps = 0;
+function searchDLX(header, solution){
+  if(header.right === header){
+    dlxSolution = solution.slice();
+    return true;
+  }
+  // choose smallest column
+  let c = header.right;
+  let s = c.size;
+  for(let j=c.right; j!==header; j=j.right){
+    if(j.size < s){ c=j; s=j.size; }
+  }
+  cover(c);
+  for(let r=c.down; r!==c; r=r.down){
+    solution.push(r);
+    for(let j=r.right; j!==r; j=j.right){
+      cover(j.column);
+      dlxOps++;
+    }
+    if(searchDLX(header, solution)) return true;
+    solution.pop();
+    for(let j=r.left; j!==r; j=j.left){
+      uncover(j.column);
+    }
+  }
+  uncover(c);
+  return false;
+}
+function dlxSolve(origGrid){
+  const grid = origGrid.map(r=>r.slice());
+  const {header} = buildDLX(grid);
+  dlxSolution = null; dlxOps = 0;
+  const t0 = performance.now();
+  searchDLX(header, []);
+  const t1 = performance.now();
+  // build result grid
+  const res = Array.from({length:9}, ()=>Array(9).fill(0));
+  if(dlxSolution){
+    for(const node of dlxSolution){
+      const {r,c,n} = node.rowID;
+      res[r][c] = n;
+    }
+  }
+  return { grid: res, time: (t1-t0).toFixed(2), ops: dlxOps };
+}
+
+/***** UI Logic *****/
+const puzzleSelect = document.getElementById("puzzleSelect");
+const loadBtn = document.getElementById("loadPuzzleBtn");
+const solveBtn = document.getElementById("solveBtn");
+
+// populate dropdown
+puzzles.forEach((p,i)=>{
+  const opt = document.createElement("option");
+  opt.value = i;
+  opt.textContent = p.name;
+  puzzleSelect.appendChild(opt);
+});
+
+let currentGrid = null;
+loadBtn.onclick = () => {
+  const p = puzzles[puzzleSelect.value];
+  currentGrid = parsePuzzle(p.str);
+  renderGrid(currentGrid, "inputGrid");
+  document.getElementById("btGrid").innerHTML = "";
+  document.getElementById("dlxGrid").innerHTML = "";
+  document.getElementById("btInfo").textContent = "";
+  document.getElementById("dlxInfo").textContent = "";
+};
+
+solveBtn.onclick = () => {
+  if(!currentGrid) return alert("Load a puzzle first!");
+  // Backtracking
+  const btRes = backtrackingSolve(currentGrid);
+  renderGrid(btRes.grid, "btGrid");
+  document.getElementById("btInfo").textContent =
+    `Time: ${btRes.time} ms | Calls: ${btRes.calls}`;
+
+  // DLX
+  const dlxRes = dlxSolve(currentGrid);
+  renderGrid(dlxRes.grid, "dlxGrid");
+  document.getElementById("dlxInfo").textContent =
+    `Time: ${dlxRes.time} ms | Operations: ${dlxRes.ops}`;
+};
+
+// auto-load first puzzle
+loadBtn.click();
+</script>
+
+</body>
+</html>
