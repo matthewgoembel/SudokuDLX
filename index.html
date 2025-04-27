@@ -249,21 +249,36 @@ function searchDLX(header, solution){
   uncover(c);
   return false;
 }
+  
 function dlxSolve(origGrid){
-  const grid = origGrid.map(r=>r.slice());
+  const grid = origGrid.map(r => r.slice());
   const {header} = buildDLX(grid);
-  dlxSolution = null; dlxOps = 0;
+  dlxSolution = null;
+  dlxOps = 0;
   const t0 = performance.now();
   searchDLX(header, []);
   const t1 = performance.now();
+
   // build result grid
   const res = Array.from({length:9}, ()=>Array(9).fill(0));
-  if(dlxSolution){
-    for(const node of dlxSolution){
-      const {r,c,n} = node.rowID;
+
+  // 🛠 Fill pre-filled cells first
+  for (let r = 0; r < 9; r++) {
+    for (let c = 0; c < 9; c++) {
+      if (grid[r][c] !== 0) {
+        res[r][c] = grid[r][c];
+      }
+    }
+  }
+
+  // 🛠 Then fill in solved cells from DLX
+  if (dlxSolution){
+    for (const node of dlxSolution){
+      const {r, c, n} = node.rowID;
       res[r][c] = n;
     }
   }
+
   return { grid: res, time: (t1-t0).toFixed(2), ops: dlxOps };
 }
 
