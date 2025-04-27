@@ -139,18 +139,21 @@ class ColumnNode extends DLXNode {
   }
 }
 function buildDLX(grid){
+  // header + 324 columns
   const header = new ColumnNode("header");
+  header.left = header; header.right = header;
   const columns = [];
-  for(let i=0; i<324; i++){
+  for(let i=0;i<324;i++){
     const col = new ColumnNode(i);
     columns.push(col);
+    // link into header's horizontal list
     col.right = header;
     col.left = header.left;
     header.left.right = col;
     header.left = col;
     col.up = col; col.down = col;
   }
-
+  // helper to add one row
   function addRow(rowID, colIndices){
     let first = null;
     for(const ci of colIndices){
@@ -158,11 +161,13 @@ function buildDLX(grid){
       const node = new DLXNode();
       node.column = col;
       node.rowID = rowID;
+      // vertical link
       node.down = col;
       node.up = col.up;
       col.up.down = node;
       col.up = node;
       col.size++;
+      // horizontal link
       if(!first){
         first = node;
       } else {
@@ -173,59 +178,24 @@ function buildDLX(grid){
       }
     }
   }
-
-  // build all possible rows
+  // build rows for each possible placement
   for(let r=0; r<9; r++){
     for(let c=0; c<9; c++){
       const v = grid[r][c];
-      for(let n=1; n<=9; n++){
+      for(let n=1;n<=9;n++){
         if(v!==0 && v!==n) continue;
-        const rowID = {r, c, n};
-        const cols = [
-          r*9 + c,
-          81 + r*9 + (n-1),
-          162 + c*9 + (n-1),
-          243 + (Math.floor(r/3)*3 + Math.floor(c/3))*9 + (n-1)
-        ];
+        const rowID = {r,c,n};
+        const cols = [];
+        cols.push(r*9 + c);                 // cell constraint
+        cols.push(81 + r*9 + (n-1));        // row# constraint
+        cols.push(162 + c*9 + (n-1));       // col# constraint
+        const b = Math.floor(r/3)*3 + Math.floor(c/3);
+        cols.push(243 + b*9 + (n-1));       // block# constraint
         addRow(rowID, cols);
       }
     }
   }
-
-  const initialSolution = [];
-
-  // 🛠 Cover givens and collect initial moves
-  for (let r=0; r<9; r++) {
-    for (let c=0; c<9; c++) {
-      const val = grid[r][c];
-      if (val !== 0) {
-        const b = Math.floor(r/3)*3 + Math.floor(c/3);
-        const cols = [
-          r*9 + c,
-          81 + r*9 + (val-1),
-          162 + c*9 + (val-1),
-          243 + b*9 + (val-1)
-        ];
-        // Find one row that satisfies all 4 constraints
-        let candidate = null;
-        for (let node = columns[r*9+c].down; node !== columns[r*9+c]; node = node.down) {
-          if (node.rowID.n === val) {
-            candidate = node;
-            break;
-          }
-        }
-        if (candidate) {
-          initialSolution.push(candidate);
-          for (let j=candidate.right; j!==candidate; j=j.right){
-            cover(j.column);
-          }
-          cover(candidate.column);
-        }
-      }
-    }
-  }
-
-  return {header, initialSolution};
+  return {header};
 }
 function cover(col){
   col.right.left = col.left;
@@ -277,21 +247,18 @@ function searchDLX(header, solution){
   uncover(c);
   return false;
 }
-  
 function dlxSolve(origGrid){
   const grid = origGrid.map(r=>r.slice());
-  const {header, initialSolution} = buildDLX(grid); // <-- use initialSolution!
-  dlxSolution = initialSolution.slice(); // start with given cells
-  dlxOps = 0;
+  const {header} = buildDLX(grid);
+  dlxSolution = null; dlxOps = 0;
   const t0 = performance.now();
-  searchDLX(header, dlxSolution); // pass prefilled partial solution
+  searchDLX(header, []);
   const t1 = performance.now();
-
   // build result grid
   const res = Array.from({length:9}, ()=>Array(9).fill(0));
-  if (dlxSolution){
-    for (const node of dlxSolution){
-      const {r, c, n} = node.rowID;
+  if(dlxSolution){
+    for(const node of dlxSolution){
+      const {r,c,n} = node.rowID;
       res[r][c] = n;
     }
   }
@@ -328,13 +295,13 @@ solveBtn.onclick = () => {
   const btRes = backtrackingSolve(currentGrid);
   renderGrid(btRes.grid, "btGrid");
   document.getElementById("btInfo").textContent =
-    `Time: ${btRes.time} ms | Calls: ${btRes.calls}`;
+    Time: ${btRes.time} ms | Calls: ${btRes.calls};
 
   // DLX
   const dlxRes = dlxSolve(currentGrid);
   renderGrid(dlxRes.grid, "dlxGrid");
   document.getElementById("dlxInfo").textContent =
-    `Time: ${dlxRes.time} ms | Operations: ${dlxRes.ops}`;
+    Time: ${dlxRes.time} ms | Operations: ${dlxRes.ops};
 };
 
 // auto-load first puzzle
