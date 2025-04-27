@@ -91,7 +91,7 @@ import java.util.*;
             81 + r * 9 + (n - 1),
             162 + c * 9 + (n - 1),
             243 + ((r / 3) * 3 + (c / 3)) * 9 + (n - 1)
-        } 
+        };
 
         Node first = null;
         for (int idx : colIndices) {
@@ -107,16 +107,16 @@ import java.util.*;
             col.up.down = node;
             col.up = node;
             col.size++;
-        }
 
-        if (first == null) {
-            first = node;
-            node.left = node.right = node;
-        } else {
-            node.left = first.left;
-            node.right = first;
-            first.left.right = node;
-            first.left = node;
+            if (first == null) {
+                first = node;
+                node.left = node.right = node;
+            } else {
+                node.left = first.left;
+                node.right = first;
+                first.left.right = node;
+                first.left = node;
+            }
         }
     }
 
