@@ -295,13 +295,13 @@ solveBtn.onclick = () => {
   const btRes = backtrackingSolve(currentGrid);
   renderGrid(btRes.grid, "btGrid");
   document.getElementById("btInfo").textContent =
-    Time: ${btRes.time} ms | Calls: ${btRes.calls};
+    `Time: ${btRes.time} ms | Calls: ${btRes.calls}`;
 
   // DLX
   const dlxRes = dlxSolve(currentGrid);
   renderGrid(dlxRes.grid, "dlxGrid");
   document.getElementById("dlxInfo").textContent =
-    Time: ${dlxRes.time} ms | Operations: ${dlxRes.ops};
+    `Time: ${dlxRes.time} ms | Operations: ${dlxRes.ops}`;
 };
 
 // auto-load first puzzle
