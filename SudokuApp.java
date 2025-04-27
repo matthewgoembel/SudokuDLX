@@ -12,11 +12,11 @@ public class SudokuApp {
 
             // Backtracking
             SudokuSolver btSolver = new SudokuBackTrack();
-            long t0 = System.nanoTime();  // ⬅️ use nanoTime for more precision
+            long t0 = System.nanoTime();  // NanoTime for more precision
             SudokuBoard btSolution = btSolver.solve(puzzle.copy());
             long t1 = System.nanoTime();
-            double dtMs = (t1 - t0) / 1_000_000.0;  // ⬅️ convert nanos -> millis
-            System.out.printf("--- Backtracking (ms): %.5f\n", dtMs);  // ⬅️ 5 decimals
+            double dtMs = (t1 - t0) / 1_000_000.0;  
+            System.out.printf("--- Backtracking (ms): %.5f\n", dtMs);  // 5 decimals
             System.out.println(btSolution);
 
             // DLX
@@ -25,7 +25,7 @@ public class SudokuApp {
             SudokuBoard dlxSolution = dlxSolver.solve(puzzle.copy());
             t1 = System.nanoTime();
             double dt2Ms = (t1 - t0) / 1_000_000.0;
-            System.out.printf("--- DLX (ms): %.5f\n", dt2Ms);  // ⬅️ 5 decimals
+            System.out.printf("--- DLX (ms): %.5f\n", dt2Ms); 
             System.out.println(dlxSolution);
         }
     }
