@@ -4,16 +4,16 @@ import java.util.List;
 public class HardcodedPuzzles {
     private static final String[] PUZZLE_NAMES = { "Easy", "Medium", "Hard" };
     private static final String[] PUZZLE_STRINGS = {
-        // Easy (~44 clues, maximum)
-        "530670092"
-      + "000195340"
+      // Easy (~41 clues, high)
+      "530070000"
+      + "600195000"
       + "098342560"
-      + "000067053"
+      + "800060003"
       + "400803001"
-      + "701020046"
-      + "059070280"
+      + "700020046"
+      + "061530280"
       + "000419005"
-      + "000080079",
+      + "090080079",
         
         // medium (~32 clues, moderate)
         "003020600"
@@ -26,7 +26,7 @@ public class HardcodedPuzzles {
       + "800203009"
       + "005010300",
 
-        // hard (~17 clues, minimal) 
+        // hard (~17 clues, low) 
         "000000002"
       + "000006000"
       + "001000090"
