@@ -10,8 +10,7 @@
     body {
       font-family:'Orbitron',sans-serif;
       background:radial-gradient(circle at center,#1f1c2c,#000);
-      color:#eee; position:relative;
-      display:flex; flex-direction:column; align-items:center;
+      color:#eee; display:flex; flex-direction:column; align-items:center;
     }
     body::before {
       content:""; position:absolute; top:0; left:0; width:100%; height:100%;
@@ -23,29 +22,24 @@
       pointer-events:none; z-index:-1;
     }
     @keyframes moveGrid { from{background-position:0 0;} to{background-position:40px 40px;} }
-    h1 {
-      margin:20px 0; font-size:2.5em;
-      text-shadow:0 0 10px #8acdea,0 0 20px #8acdea;
-    }
+
+    h1 { margin:20px 0; font-size:2.5em; text-shadow:0 0 10px #8acdea,0 0 20px #8acdea; }
     .controls { margin-bottom:20px; }
     select, button {
       font-family:'Orbitron',sans-serif;
       background:#2e2a44; border:1px solid #8acdea; color:#8acdea;
       padding:8px 16px; margin:0 8px; border-radius:4px;
-      box-shadow:0 0 5px rgba(138,205,234,0.7);
-      cursor:pointer; transition:all .3s ease;
+      box-shadow:0 0 5px rgba(138,205,234,0.7); cursor:pointer; transition:all .3s ease;
     }
-    select:hover,button:hover {
-      background:#8acdea; color:#2a1a3d; box-shadow:0 0 15px #8acdea;
-    }
+    select:hover, button:hover { background:#8acdea; color:#2a1a3d; box-shadow:0 0 15px #8acdea; }
+
     .container {
       display:flex; flex-wrap:wrap; justify-content:center;
       gap:40px; width:100%; flex-grow:1; overflow-y:auto; padding-bottom:20px;
     }
     .panel {
       backdrop-filter:blur(10px);
-      background:rgba(30,30,60,0.6);
-      border:1px solid #4e4e5e;
+      background:rgba(30,30,60,0.6); border:1px solid #4e4e5e;
       box-shadow:0 0 20px rgba(78,78,94,0.7), inset 0 0 10px rgba(255,255,255,0.1);
       border-radius:8px; padding:15px; min-width:280px;
     }
@@ -53,8 +47,7 @@
     table { border-collapse:collapse; margin:0 auto; background:transparent; }
     td {
       width:30px; height:30px; text-align:center;
-      background:rgba(20,20,40,0.8);
-      border:1px solid rgba(255,255,255,0.2);
+      background:rgba(20,20,40,0.8); border:1px solid rgba(255,255,255,0.2);
       transition:background .3s;
     }
     td:hover { background:rgba(78,78,94,0.8); }
@@ -93,28 +86,35 @@
   </div>
 
 <script>
-// === Hard‐coded puzzles (same as your Java loader) ===
+// === Hard‐coded puzzles ===
 const puzzles = [
-  { name: "Easy (40 clues)",
-    str: "500678900672095008000300067859060023020003001703900800900000200080010605345280079" },
-  { name: "Medium (32 clues)",
-    str: "003020600900305001001806400008102900700000008006708200002609500800203009005010300" },
-  { name: "Hard (17 clues)",
-    str: "000000002000006000001000090000100000000800000000030000040000700000200000300000000" }
+  {
+    name: "Easy (~40 clues)",
+    str:  "500678900672095008000300067859060023020003001703900800900000200080010605345280079"
+  },
+  {
+    name: "Medium (32 clues)",
+    str:  "003020600900305001001806400008102900700000008006708200002609500800203009005010300"
+  },
+  {
+    name: "Hard (17 clues)",
+    str:  "000000002000006000001000090000100000000800000000030000040000700000200000300000000"
+  }
 ];
 
-// === Utilities ===
+// === Utility: parse string → 9×9 grid ===
 function parsePuzzle(s) {
   const g = [];
   for (let r = 0; r < 9; r++) {
     g[r] = [];
     for (let c = 0; c < 9; c++) {
-      g[r][c] = s[r*9+c] === '0' ? 0 : +s[r*9+c];
+      g[r][c] = s[r*9 + c] === '0' ? 0 : +s[r*9 + c];
     }
   }
   return g;
 }
 
+// === Utility: render 9×9 grid into table#id ===
 function renderGrid(g, id) {
   const tbl = document.getElementById(id);
   tbl.innerHTML = "";
@@ -131,7 +131,7 @@ function renderGrid(g, id) {
   }
 }
 
-// --- Backtracking Solver (mirrors your Java) ---
+// --- Backtracking solver (mirrors your Java) ---
 let btCalls = 0;
 function validBT(g, r, c, v) {
   for (let i = 0; i < 9; i++) {
@@ -140,44 +140,4 @@ function validBT(g, r, c, v) {
   const br = Math.floor(r/3)*3, bc = Math.floor(c/3)*3;
   for (let i = 0; i < 3; i++)
     for (let j = 0; j < 3; j++)
-      if (g[br+i][bc+j] === v) return false;
-  return true;
-}
-
-function solveBT(g) {
-  btCalls++;
-  for (let r = 0; r < 9; r++) {
-    for (let c = 0; c < 9; c++) {
-      if (g[r][c] === 0) {
-        for (let n = 1; n <= 9; n++) {
-          if (validBT(g, r, c, n)) {
-            g[r][c] = n;
-            if (solveBT(g)) return true;
-            g[r][c] = 0;
-          }
-        }
-        return false;
-      }
-    }
-  }
-  return true;
-}
-
-// --- Dancing Links Solver (mirrors your Java) ---
-class DLXNode { constructor(){ this.L=this; this.R=this; this.U=this; this.D=this; this.C=null; } }
-class ColumnNode extends DLXNode {
-  constructor(name) { super(); this.name=name; this.size=0; this.C=this; }
-}
-
-function buildDLX(orig) {
-  const header = new ColumnNode("h");
-  header.L = header; header.R = header;
-  const cols = [];
-  for (let i = 0; i < 324; i++) {
-    const c = new ColumnNode(i);
-    cols.push(c);
-    c.R = header; c.L = header.L; header.L.R = c; header.L = c;
-    c.U = c; c.D = c;
-  }
-
-  function addRow(r, c, n, idx
+      if (
