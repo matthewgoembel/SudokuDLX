@@ -42,7 +42,6 @@
     h1 {
       margin: 20px 0;
       font-size: 2.5em;
-      text-align: center;
       text-shadow: 0 0 10px #8acdea, 0 0 20px #8acdea;
     }
     .controls {
@@ -152,7 +151,7 @@
   <footer></footer>
 
 <script>
-/* === Hard-coded Puzzles === */
+// === Hard-coded Puzzles ===
 const puzzles = [
   { name: "Easy",
     str: "530070000600195000098342560800060003400803001700020046061530280000419005090080079" },
@@ -162,51 +161,42 @@ const puzzles = [
     str: "000000002000006000001000090000100000000800000000030000040000700000200000300000000" }
 ];
 
-/* === Utilities === */
-function parsePuzzle(str) {
-  const grid = [];
-  for (let r = 0; r < 9; r++) {
-    grid[r] = [];
-    for (let c = 0; c < 9; c++) {
-      const ch = str[r*9 + c];
-      grid[r][c] = (ch === '0') ? 0 : +ch;
-    }
-  }
-  return grid;
+// === Utilities ===
+function parsePuzzle(s) {
+  const g=[]; for(let r=0;r<9;r++){g[r]=[];for(let c=0;c<9;c++){const ch=s[r*9+c];g[r][c]=ch==='0'?0:+ch;}}
+  return g;
 }
-function renderGrid(grid, id) {
-  const tbl = document.getElementById(id);
-  tbl.innerHTML = "";
-  for (let r = 0; r < 9; r++) {
-    const row = tbl.insertRow();
-    for (let c = 0; c < 9; c++) {
-      const cell = row.insertCell();
-      cell.textContent = grid[r][c]||"";
-      if (r%3===0) cell.classList.add("thick-border-top");
-      if (c%3===0) cell.classList.add("thick-border-left");
-      if (c===8)   cell.classList.add("thick-border-right");
-      if (r===8)   cell.classList.add("thick-border-bot");
+function renderGrid(g,id){
+  const tbl=document.getElementById(id); tbl.innerHTML="";
+  for(let r=0;r<9;r++){
+    const row=tbl.insertRow();
+    for(let c=0;c<9;c++){
+      const cell=row.insertCell(); cell.textContent=g[r][c]||"";
+      if(r%3===0) cell.classList.add("thick-border-top");
+      if(c%3===0) cell.classList.add("thick-border-left");
+      if(c===8)   cell.classList.add("thick-border-right");
+      if(r===8)   cell.classList.add("thick-border-bot");
     }
   }
 }
 
-/* === Backtracking Solver === */
-let btCalls = 0;
-function validBT(g,r,c,v) {
+// === Backtracking Solver ===
+let btCalls=0;
+function validBT(g,r,c,v){
   for(let i=0;i<9;i++) if(g[r][i]===v||g[i][c]===v) return false;
-  const br = Math.floor(r/3)*3, bc = Math.floor(c/3)*3;
-  for(let i=0;i<3;i++)for(let j=0;j<3;j++) if(g[br+i][bc+j]===v) return false;
+  const br=Math.floor(r/3)*3, bc=Math.floor(c/3)*3;
+  for(let i=0;i<3;i++) for(let j=0;j<3;j++) if(g[br+i][bc+j]===v) return false;
   return true;
 }
-function findEmpty(g) {
-  for(let r=0;r<9;r++)for(let c=0;c<9;c++) if(g[r][c]===0) return {r,c};
+function findEmpty(g){
+  for(let r=0;r<9;r++) for(let c=0;c<9;c++) if(g[r][c]===0) return {r,c};
   return null;
 }
-function solveBT(g) {
+function solveBT(g){
   btCalls++;
-  const e = findEmpty(g);
+  const e=findEmpty(g);
   if(!e) return true;
-  const {r,c} = e;
+  const {r,c}=e;
   for(let n=1;n<=9;n++){
     if(validBT(g,r,c,n)){
       g[r][c]=n;
@@ -216,31 +206,25 @@ function solveBT(g) {
   }
   return false;
 }
-function backtrackingSolve(orig) {
-  let total=0, callSum=0, result;
+function backtrackingSolve(orig){
+  let total=0, callsFirst=0, res;
   for(let i=0;i<50;i++){
     const g=orig.map(r=>r.slice());
     btCalls=0;
     const t0=performance.now();
     solveBT(g);
     const t1=performance.now();
-    total += (t1-t0);
-    callSum += btCalls;
-    result = g;
+    if(i===0){ callsFirst=btCalls; res=g; }
+    total += t1-t0;
   }
-  return {
-    grid: result,
-    time: (total/50).toFixed(2),
-    calls: Math.round(callSum/50)
-  };
+  return {grid:res, time:(total/50).toFixed(2), calls:callsFirst};
 }
 
-/* === Dancing Links Solver (same as before) === */
+// === Dancing Links Solver ===
 class DLXNode{constructor(){this.L=this;this.R=this;this.U=this;this.D=this;this.C=null}}
 class ColumnNode extends DLXNode{constructor(n){super();this.name=n;this.size=0}}
 function buildDLX(orig){
-  const header=new ColumnNode("h");
-  header.L=header;header.R=header;
+  const header=new ColumnNode("h"); header.L=header;header.R=header;
   const cols=[];
   for(let i=0;i<324;i++){
     const c=new ColumnNode(i);
@@ -255,27 +239,27 @@ function buildDLX(orig){
       const node=new DLXNode();
       node.C=col;node.row=r;node.col=c;node.num=n;
       node.D=col;node.U=col.U;col.U.D=node;col.U=node;col.size++;
-      if(!first){first=node;first.L=first;first.R=first;}
-      else{node.R=first;node.L=first.L;first.L.R=node;first.L=node;}
+      if(!first){ first=node; first.L=first; first.R=first; }
+      else{ node.R=first; node.L=first.L; first.L.R=node; first.L=node; }
     });
   }
-  for(let r=0;r<9;r++)for(let c=0;c<9;c++){
+  for(let r=0;r<9;r++) for(let c=0;c<9;c++){
     const v=orig[r][c];
     for(let n=1;n<=9;n++){
-      if(v!==0&&v!==n) continue;
+      if(v!==0 && n!==v) continue;
       const b=Math.floor(r/3)*3+Math.floor(c/3);
       addRow(r,c,n,[r*9+c,81+r*9+(n-1),162+c*9+(n-1),243+b*9+(n-1)]);
     }
   }
   return {header};
 }
-function cover(c){c.R.L=c.L;c.L.R=c.R;for(let i=c.D;i!==c;i=i.D)for(let j=i.R;j!==i;j=j.R){j.D.U=j.U;j.U.D=j.D;j.C.size--}}
-function uncover(c){for(let i=c.U;i!==c;i=i.U)for(let j=i.L;j!==i;j=j.L){j.C.size++;j.D.U=j;j.U.D=j;}c.R.L=c;c.L.R=c}
+function cover(c){ c.R.L=c.L; c.L.R=c.R; for(let i=c.D;i!==c;i=i.D) for(let j=i.R;j!==i;j=j.R){ j.D.U=j.U; j.U.D=j.D; j.C.size--; } }
+function uncover(c){ for(let i=c.U;i!==c;i=i.U) for(let j=i.L;j!==i;j=j.L){ j.C.size++; j.D.U=j; j.U.D=j; } c.R.L=c; c.L.R=c; }
 let dlxSol=null;
 function searchDLX(h,k,sol){
-  if(h.R===h){dlxSol=[...sol];return true}
-  let c=h.R,min=c.size;
-  for(let j=c.R;j!==h;j=j.R) if(j.size<min){c=j;min=j.size}
+  if(h.R===h){ dlxSol=[...sol]; return true; }
+  let c=h.R, min=c.size;
+  for(let j=c.R;j!==h;j=j.R) if(j.size<min){ c=j; min=j.size; }
   cover(c);
   for(let r=c.D;r!==c;r=r.D){
     sol.push(r);
@@ -288,36 +272,33 @@ function searchDLX(h,k,sol){
   return false;
 }
 function dlxSolve(orig){
-  let total=0, opsSum=0, result;
+  let total=0, opsFirst=0, res;
   for(let i=0;i<50;i++){
-    const grid=orig.map(r=>r.slice());
-    const {header}=buildDLX(grid);
+    const g=orig.map(r=>r.slice());
+    const {header}=buildDLX(g);
     dlxSol=null;
     const t0=performance.now();
     searchDLX(header,0,[]);
     const t1=performance.now();
-    total += (t1-t0);
-    opsSum += (dlxSol?dlxSol.length:0);
-    const res=Array.from({length:9},()=>Array(9).fill(0));
-    if(dlxSol) dlxSol.forEach(n=>res[n.row][n.col]=n.num);
-    result=res;
+    if(i===0){
+      opsFirst=dlxSol?dlxSol.length:0;
+      const board=Array.from({length:9},()=>Array(9).fill(0));
+      if(dlxSol) dlxSol.forEach(n=>board[n.row][n.col]=n.num);
+      res=board;
+    }
+    total += t1-t0;
   }
-  return {
-    grid: result,
-    time: (total/50).toFixed(2),
-    ops: Math.round(opsSum/50)
-  };
+  return {grid:res, time:(total/50).toFixed(2), ops:opsFirst};
 }
 
-/* === UI wiring === */
-const puzzleSelect = document.getElementById("puzzleSelect");
-const loadBtn      = document.getElementById("loadPuzzleBtn");
-const solveBtn     = document.getElementById("solveBtn");
+// === UI wiring ===
+const puzzleSelect = document.getElementById("puzzleSelect"),
+      loadBtn      = document.getElementById("loadPuzzleBtn"),
+      solveBtn     = document.getElementById("solveBtn");
 
-// Populate dropdown
 puzzles.forEach((p,i)=>{
   const opt=document.createElement("option");
-  opt.value=i;opt.textContent=p.name;
+  opt.value=i; opt.textContent=p.name;
   puzzleSelect.appendChild(opt);
 });
 
@@ -330,49 +311,7 @@ loadBtn.onclick=()=>{
   document.getElementById("btInfo").textContent="";
   document.getElementById("dlxInfo").textContent="";
 };
-solveBtn.onclick = () => {
-  if (!current) return alert("Load a puzzle first!");
-
-  // BACKTRACKING: average time, but single-run calls
-  let btTotal = 0, btCallsFirst = 0, btResult;
-  for (let i = 0; i < 50; i++) {
-    const grid = current.map(r => r.slice());
-    btCalls = 0;
-    const t0 = performance.now();
-    solveBT(grid);
-    const t1 = performance.now();
-    if (i === 0) btCallsFirst = btCalls, btResult = grid;
-    btTotal += (t1 - t0);
-  }
-  const btAvgTime = (btTotal / 50).toFixed(2);
-
-  // DLX: average time, but single-run ops
-  let dlxTotal = 0, dlxOpsFirst = 0, dlxResult;
-  for (let i = 0; i < 50; i++) {
-    const grid = current.map(r => r.slice());
-    dlxSol = null;
-    const t0 = performance.now();
-    searchDLX(buildDLX(grid).header, 0, []);
-    const t1 = performance.now();
-    if (i === 0) dlxOpsFirst = dlxSol.length, dlxResult = (() => {
-      let res = Array.from({length:9},()=>Array(9).fill(0));
-      dlxSol.forEach(n=>res[n.row][n.col]=n.num);
-      return res;
-    })();
-    dlxTotal += (t1 - t0);
-  }
-  const dlxAvgTime = (dlxTotal / 50).toFixed(2);
-
-  // Render results
-  renderGrid(btResult, "btGrid");
-  document.getElementById("btInfo").textContent =
-    `Avg Time: ${btAvgTime} ms | Calls: ${btCallsFirst}`;
-
-  renderGrid(dlxResult, "dlxGrid");
-  document.getElementById("dlxInfo").textContent =
-    `Avg Time: ${dlxAvgTime} ms | Ops: ${dlxOpsFirst}`;
-};
-
+solveBtn.onclick();
 
 // auto-load first
 loadBtn.click();
