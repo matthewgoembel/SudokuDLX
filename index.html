@@ -10,13 +10,11 @@
     body {
       font-family:'Orbitron',sans-serif;
       background:radial-gradient(circle at center,#1f1c2c,#000);
-      color:#eee;
-      position:relative;
+      color:#eee; position:relative;
       display:flex; flex-direction:column; align-items:center;
     }
     body::before {
-      content:""; position:absolute; top:0; left:0;
-      width:100%; height:100%;
+      content:""; position:absolute; top:0; left:0; width:100%; height:100%;
       background:
         linear-gradient(transparent 50%,rgba(255,255,255,0.02) 50%) 0 0,
         linear-gradient(to right,transparent 50%,rgba(255,255,255,0.02) 50%) 0 0;
@@ -26,8 +24,7 @@
     }
     @keyframes moveGrid { from{background-position:0 0;} to{background-position:40px 40px;} }
     h1 {
-      margin:20px 0;
-      font-size:2.5em;
+      margin:20px 0; font-size:2.5em;
       text-shadow:0 0 10px #8acdea,0 0 20px #8acdea;
     }
     .controls { margin-bottom:20px; }
@@ -96,10 +93,10 @@
   </div>
 
 <script>
-// === Hard‐coded puzzles ===
+// === Hard‐coded puzzles (same as your Java loader) ===
 const puzzles = [
-  { name: "Easy (~39 clues)",
-    str: "530070000600195000098342560800060003400803001700020046061530280000419005090080079" },
+  { name: "Easy (40 clues)",
+    str: "500678900672095008000300067859060023020003001703900800900000200080010605345280079" },
   { name: "Medium (32 clues)",
     str: "003020600900305001001806400008102900700000008006708200002609500800203009005010300" },
   { name: "Hard (17 clues)",
@@ -107,169 +104,80 @@ const puzzles = [
 ];
 
 // === Utilities ===
-function parsePuzzle(s){
-  const g=[]; for(let r=0;r<9;r++){g[r]=[];for(let c=0;c<9;c++){g[r][c]=s[r*9+c]==='0'?0:+s[r*9+c];}}
+function parsePuzzle(s) {
+  const g = [];
+  for (let r = 0; r < 9; r++) {
+    g[r] = [];
+    for (let c = 0; c < 9; c++) {
+      g[r][c] = s[r*9+c] === '0' ? 0 : +s[r*9+c];
+    }
+  }
   return g;
 }
-function renderGrid(g,id){
-  const tbl=document.getElementById(id); tbl.innerHTML="";
-  for(let r=0;r<9;r++){
-    const row=tbl.insertRow();
-    for(let c=0;c<9;c++){
-      const cell=row.insertCell(); cell.textContent=g[r][c]||"";
-      if(r%3===0) cell.classList.add("thick-border-top");
-      if(c%3===0) cell.classList.add("thick-border-left");
-      if(c===8)   cell.classList.add("thick-border-right");
-      if(r===8)   cell.classList.add("thick-border-bot");
+
+function renderGrid(g, id) {
+  const tbl = document.getElementById(id);
+  tbl.innerHTML = "";
+  for (let r = 0; r < 9; r++) {
+    const row = tbl.insertRow();
+    for (let c = 0; c < 9; c++) {
+      const cell = row.insertCell();
+      cell.textContent = g[r][c] || "";
+      if (r % 3 === 0) cell.classList.add("thick-border-top");
+      if (c % 3 === 0) cell.classList.add("thick-border-left");
+      if (c === 8)      cell.classList.add("thick-border-right");
+      if (r === 8)      cell.classList.add("thick-border-bot");
     }
   }
 }
 
-// --- Backtracking solver ---
-let btCalls=0;
-function validBT(g,r,c,v){
-  for(let i=0;i<9;i++) if(g[r][i]===v||g[i][c]===v) return false;
-  const br=Math.floor(r/3)*3, bc=Math.floor(c/3)*3;
-  for(let i=0;i<3;i++)for(let j=0;j<3;j++) if(g[br+i][bc+j]===v) return false;
+// --- Backtracking Solver (mirrors your Java) ---
+let btCalls = 0;
+function validBT(g, r, c, v) {
+  for (let i = 0; i < 9; i++) {
+    if (g[r][i] === v || g[i][c] === v) return false;
+  }
+  const br = Math.floor(r/3)*3, bc = Math.floor(c/3)*3;
+  for (let i = 0; i < 3; i++)
+    for (let j = 0; j < 3; j++)
+      if (g[br+i][bc+j] === v) return false;
   return true;
 }
-function findEmpty(g){
-  for(let r=0;r<9;r++)for(let c=0;c<9;c++) if(g[r][c]===0) return {r,c};
-  return null;
-}
-function solveBT(g){
+
+function solveBT(g) {
   btCalls++;
-  const e=findEmpty(g);
-  if(!e) return true;
-  const {r,c}=e;
-  for(let n=1;n<=9;n++){
-    if(validBT(g,r,c,n)){
-      g[r][c]=n;
-      if(solveBT(g)) return true;
-      g[r][c]=0;
+  for (let r = 0; r < 9; r++) {
+    for (let c = 0; c < 9; c++) {
+      if (g[r][c] === 0) {
+        for (let n = 1; n <= 9; n++) {
+          if (validBT(g, r, c, n)) {
+            g[r][c] = n;
+            if (solveBT(g)) return true;
+            g[r][c] = 0;
+          }
+        }
+        return false;
+      }
     }
   }
-  return false;
-}
-function backtrackingSolve(orig){
-  let total=0, callsFirst=0, res;
-  for(let i=0;i<50;i++){
-    const g=orig.map(r=>r.slice());
-    btCalls=0;
-    const t0=performance.now(); solveBT(g); const t1=performance.now();
-    if(i===0){callsFirst=btCalls; res=g;}
-    total += t1 - t0;
-  }
-  return {grid:res, time:(total/50).toFixed(2), calls:callsFirst};
+  return true;
 }
 
-// --- Dancing Links solver ---
-class DLXNode{constructor(){this.L=this;this.R=this;this.U=this;this.D=this;this.C=null}}
-class ColumnNode extends DLXNode{constructor(n){super();this.name=n;this.size=0}}
-function buildDLX(orig){
-  const header=new ColumnNode("h"); header.L=header;header.R=header;
-  const cols=[];
-  for(let i=0;i<324;i++){
-    const c=new ColumnNode(i);
+// --- Dancing Links Solver (mirrors your Java) ---
+class DLXNode { constructor(){ this.L=this; this.R=this; this.U=this; this.D=this; this.C=null; } }
+class ColumnNode extends DLXNode {
+  constructor(name) { super(); this.name=name; this.size=0; this.C=this; }
+}
+
+function buildDLX(orig) {
+  const header = new ColumnNode("h");
+  header.L = header; header.R = header;
+  const cols = [];
+  for (let i = 0; i < 324; i++) {
+    const c = new ColumnNode(i);
     cols.push(c);
-    c.R=header; c.L=header.L; header.L.R=c; header.L=c;
-    c.U=c; c.D=c;
+    c.R = header; c.L = header.L; header.L.R = c; header.L = c;
+    c.U = c; c.D = c;
   }
-  function addRow(r,c,n,idx){
-    let first=null;
-    idx.forEach(ci=>{
-      const col=cols[ci], node=new DLXNode();
-      node.C=col;node.row=r;node.col=c;node.num=n;
-      node.D=col;node.U=col.U;col.U.D=node;col.U=node;col.size++;
-      if(!first){ first=node; first.L=first; first.R=first; }
-      else{ node.R=first; node.L=first.L; first.L.R=node; first.L=node; }
-    });
-  }
-  for(let r=0;r<9;r++)for(let c=0;c<9;c++){
-    const v=orig[r][c];
-    for(let n=1;n<=9;n++){
-      if(v!==0&&n!==v) continue;
-      const b=Math.floor(r/3)*3+Math.floor(c/3);
-      addRow(r,c,n,[r*9+c,81+r*9+(n-1),162+c*9+(n-1),243+b*9+(n-1)]);
-    }
-  }
-  return {header};
-}
-function cover(c){ c.R.L=c.L; c.L.R=c.R; for(let i=c.D;i!==c;i=i.D)for(let j=i.R;j!==i;j=j.R){ j.D.U=j.U; j.U.D=j.D; j.C.size--; } }
-function uncover(c){ for(let i=c.U;i!==c;i=i.U)for(let j=i.L;j!==i;j=j.L){ j.C.size++; j.D.U=j; j.U.D=j; } c.R.L=c; c.L.R=c; }
-let dlxSol=null;
-function searchDLX(h,k,sol){
-  if(h.R===h){ dlxSol=[...sol]; return true; }
-  let c=h.R, min=c.size;
-  for(let j=c.R;j!==h;j=j.R) if(j.size<min){ c=j; min=j.size; }
-  cover(c);
-  for(let r=c.D;r!==c;r=r.D){
-    sol.push(r);
-    for(let j=r.R;j!==r;j=j.R) cover(j.C);
-    if(searchDLX(h,k+1,sol)) return true;
-    sol.pop();
-    for(let j=r.L;j!==r;j=j.L) uncover(j.C);
-  }
-  uncover(c);
-  return false;
-}
-function dlxSolve(orig){
-  let total=0, opsFirst=0, res;
-  for(let i=0;i<50;i++){
-    const g=orig.map(r=>r.slice());
-    const {header}=buildDLX(g);
-    dlxSol=null;
-    const t0=performance.now(); searchDLX(header,0,[]); const t1=performance.now();
-    if(i===0){
-      opsFirst=dlxSol?dlxSol.length:0;
-      const out=Array.from({length:9},()=>Array(9).fill(0));
-      dlxSol.forEach(n=>out[n.row][n.col]=n.num);
-      res=out;
-    }
-    total += t1 - t0;
-  }
-  return {grid:res, time:(total/50).toFixed(2), ops:opsFirst};
-}
 
-// === UI wiring ===
-const puzzleSelect = document.getElementById("puzzleSelect"),
-      loadBtn      = document.getElementById("loadPuzzleBtn"),
-      solveBtn     = document.getElementById("solveBtn");
-
-puzzles.forEach((p,i)=>{
-  const opt=document.createElement("option");
-  opt.value=i; opt.textContent=p.name;
-  puzzleSelect.appendChild(opt);
-});
-
-let current=null;
-loadBtn.onclick=()=>{
-  current=parsePuzzle(puzzles[puzzleSelect.value].str);
-  renderGrid(current,"inputGrid");
-  document.getElementById("btGrid").innerHTML="";
-  document.getElementById("dlxGrid").innerHTML="";
-  document.getElementById("btInfo").textContent="";
-  document.getElementById("dlxInfo").textContent="";
-};
-solveBtn.onclick = () => {
-  if (!current) return alert("Load a puzzle first!");
-
-  // Backtracking
-  const bt = backtrackingSolve(current);
-  renderGrid(bt.grid, "btGrid");
-  document.getElementById("btInfo").textContent =
-    `Avg Time: ${bt.time} ms | Calls: ${bt.calls}`;
-
-  // DLX
-  const dx = dlxSolve(current);
-  renderGrid(dx.grid, "dlxGrid");
-  document.getElementById("dlxInfo").textContent =
-    `Avg Time: ${dx.time} ms | Ops: ${dx.ops}`;
-};
-
-// auto-load first
-loadBtn.click();
-</script>
-
-</body>
-</html>
+  function addRow(r, c, n, idx
