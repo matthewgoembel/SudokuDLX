@@ -4,24 +4,57 @@
   <meta charset="UTF-8">
   <title>Sudoku Solver Comparison</title>
   <style>
-    body { font-family: sans-serif; padding: 20px; }
-    .container { display: flex; gap: 40px; }
-    .panel { text-align: center; }
-    table { border-collapse: collapse; margin: 10px auto; }
-    td { width: 30px; height: 30px; text-align: center; 
-         border: 1px solid #333; font-size: 18px; }
-    .thick-border-top   { border-top:   3px solid #333; }
-    .thick-border-left  { border-left:  3px solid #333; }
-    .thick-border-right { border-right: 3px solid #333; }
-    .thick-border-bot   { border-bottom:3px solid #333; }
-    select, button { padding: 6px 12px; margin: 5px; }
+    /* === Presentation Theme === */
+    body { 
+      font-family: 'Segoe UI', sans-serif; 
+      background-color: #2a1a3d;     /* dark purple */
+      color: #ffffff;                /* white text */
+      padding: 20px; 
+    }
+    h1, h2 {
+      color: #ffffff;
+    }
+    .container { 
+      display: flex; 
+      gap: 40px; 
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .panel { text-align: center; margin-bottom: 20px; }
+    table { 
+      border-collapse: collapse; 
+      margin: 10px auto; 
+      background-color: #3a274d;    /* slightly lighter purple */
+    }
+    td { 
+      width: 30px; 
+      height: 30px; 
+      text-align: center; 
+      border: 1px solid #ffffff;    /* white borders */
+      font-size: 18px; 
+      color: #ffffff;
+    }
+    .thick-border-top   { border-top:    3px solid #ffffff; }
+    .thick-border-left  { border-left:   3px solid #ffffff; }
+    .thick-border-right { border-right:  3px solid #ffffff; }
+    .thick-border-bot   { border-bottom: 3px solid #ffffff; }
+    select, button { 
+      padding: 8px 16px; 
+      margin: 5px;
+      background-color: #8acdea;     /* aqua accent */
+      color: #2a1a3d;                /* dark purple text */
+      border: none; 
+      border-radius: 4px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    select { width: 160px; }
     .info { margin-top: 8px; font-weight: bold; }
   </style>
 </head>
 <body>
 
   <h1>Sudoku Solver: Backtracking vs. Dancing Links</h1>
-
   <div>
     <label for="puzzleSelect">Choose a puzzle:</label>
     <select id="puzzleSelect"></select>
@@ -47,264 +80,213 @@
   </div>
 
 <script>
-/***** Hard-coded puzzles *****/
+// === Three Hard-coded Puzzles ===
 const puzzles = [
-  { name: "Puzzle 1",
-    str: "100007090030020008009600500005300900010080002600004000059000073002010080070000100" },
-  { name: "Puzzle 2",
-    str: "530070000600195000098000060800060003400803001700020006060000280000419005000080079" }
+  { name: "Easy",
+    str: "530070000600195000098000060800060003400803001700020006060000280000419005000080079" },
+  { name: "Medium",
+    str: "003020600900305001001806400008102900700000008006708200002609500800203009005010300" },
+  { name: "Hard",
+    str: "000000907000420180000705026100904000050000040000507009920108000034059000507000000" }
 ];
 
-/***** Utility to parse and render grids *****/
+// Utility: parse string to 9×9 array
 function parsePuzzle(str) {
   const grid = [];
-  for(let r=0; r<9; r++){
+  for (let r = 0; r < 9; r++) {
     grid[r] = [];
-    for(let c=0; c<9; c++){
+    for (let c = 0; c < 9; c++) {
       const ch = str[r*9 + c];
-      grid[r][c] = (ch === '0' || ch === '.') ? 0 : parseInt(ch);
+      grid[r][c] = (ch === '0' || ch === '.') ? 0 : +ch;
     }
   }
   return grid;
 }
+
+// Utility: render a 9×9 array into a table
 function renderGrid(grid, tableId) {
   const table = document.getElementById(tableId);
   table.innerHTML = "";
-  for(let r=0; r<9; r++){
+  for (let r = 0; r < 9; r++) {
     const row = table.insertRow();
-    for(let c=0; c<9; c++){
+    for (let c = 0; c < 9; c++) {
       const cell = row.insertCell();
-      cell.textContent = grid[r][c] === 0 ? "" : grid[r][c];
-      // thick borders for 3x3 blocks
-      if(r % 3 === 0) cell.classList.add("thick-border-top");
-      if(c % 3 === 0) cell.classList.add("thick-border-left");
-      if(c === 8)      cell.classList.add("thick-border-right");
-      if(r === 8)      cell.classList.add("thick-border-bot");
+      cell.textContent = grid[r][c] || "";
+      if (r % 3 === 0) cell.classList.add("thick-border-top");
+      if (c % 3 === 0) cell.classList.add("thick-border-left");
+      if (c === 8)      cell.classList.add("thick-border-right");
+      if (r === 8)      cell.classList.add("thick-border-bot");
     }
   }
 }
 
-/***** Backtracking Solver *****/
+// --- Backtracking Solver ---
 let btCalls = 0;
-function validBT(grid, r, c, val) {
-  for(let i=0;i<9;i++){
-    if(grid[r][i]===val||grid[i][c]===val) return false;
+function validBT(g, r, c, v) {
+  for (let i=0; i<9; i++){
+    if (g[r][i]===v||g[i][c]===v) return false;
   }
   const br = Math.floor(r/3)*3, bc = Math.floor(c/3)*3;
-  for(let i=0;i<3;i++)for(let j=0;j<3;j++){
-    if(grid[br+i][bc+j]===val) return false;
+  for (let i=0;i<3;i++) for (let j=0;j<3;j++){
+    if (g[br+i][bc+j]===v) return false;
   }
   return true;
 }
-function findEmpty(grid){
-  for(let r=0;r<9;r++) for(let c=0;c<9;c++){
-    if(grid[r][c]===0) return {r,c};
+function findEmpty(g) {
+  for (let r=0;r<9;r++) for (let c=0;c<9;c++){
+    if (g[r][c]===0) return {r,c};
   }
   return null;
 }
-function solveBT(grid){
+function solveBT(g) {
   btCalls++;
-  const e = findEmpty(grid);
-  if(!e) return true;
+  const e = findEmpty(g);
+  if (!e) return true;
   const {r,c} = e;
-  for(let n=1;n<=9;n++){
-    if(validBT(grid,r,c,n)){
-      grid[r][c] = n;
-      if(solveBT(grid)) return true;
-      grid[r][c] = 0;
+  for (let n=1;n<=9;n++){
+    if (validBT(g,r,c,n)){
+      g[r][c]=n;
+      if (solveBT(g)) return true;
+      g[r][c]=0;
     }
   }
   return false;
 }
-function backtrackingSolve(origGrid){
-  const grid = origGrid.map(r=>r.slice());
+function backtrackingSolve(orig) {
+  const grid = orig.map(r=>r.slice());
   btCalls = 0;
   const t0 = performance.now();
   solveBT(grid);
   const t1 = performance.now();
-  return { grid, time: (t1 - t0).toFixed(2), calls: btCalls };
+  return {grid, time: (t1-t0).toFixed(2), calls: btCalls};
 }
 
-/***** Dancing Links Solver *****/
-class DLXNode {
-  constructor(){ this.left=this; this.right=this; this.up=this; this.down=this;
-                   this.column = null; this.rowID=null; }
-}
+// --- Dancing Links Solver ---
+class DLXNode { constructor(){ this.L=this;this.R=this;this.U=this;this.D=this;this.C=null;}}
 class ColumnNode extends DLXNode {
-  constructor(name){
-    super();
-    this.name = name;
-    this.size = 0;
-    this.column = this;
-  }
+  constructor(name){ super(); this.name=name; this.size=0; }
 }
-function buildDLX(grid){
-  // header + 324 columns
-  const header = new ColumnNode("header");
-  header.left = header; header.right = header;
-  const columns = [];
-  for(let i=0;i<324;i++){
-    const col = new ColumnNode(i);
-    columns.push(col);
-    // link into header's horizontal list
-    col.right = header;
-    col.left = header.left;
-    header.left.right = col;
-    header.left = col;
-    col.up = col; col.down = col;
+function buildDLX(orig) {
+  const header = new ColumnNode("h");
+  header.L = header; header.R = header;
+  const cols = [];
+  for (let i=0;i<324;i++){
+    const c = new ColumnNode(i);
+    cols.push(c);
+    c.R = header; c.L=header.L; header.L.R=c; header.L=c;
+    c.U=c; c.D=c;
   }
-  // helper to add one row
-  function addRow(rowID, colIndices){
-    let first = null;
-    for(const ci of colIndices){
-      const col = columns[ci];
-      const node = new DLXNode();
-      node.column = col;
-      node.rowID = rowID;
-      // vertical link
-      node.down = col;
-      node.up = col.up;
-      col.up.down = node;
-      col.up = node;
-      col.size++;
-      // horizontal link
-      if(!first){
-        first = node;
-      } else {
-        node.right = first;
-        node.left = first.left;
-        first.left.right = node;
-        first.left = node;
-      }
-    }
+  function addRow(r,c,n,indices) {
+    let first=null;
+    indices.forEach(ci=>{
+      const col = cols[ci];
+      const node=new DLXNode();
+      node.C=col;
+      node.row=r; node.col=c; node.num=n;
+      // vertical
+      node.D=col; node.U=col.U; col.U.D=node; col.U=node; col.size++;
+      // horizontal
+      if(!first){ first=node; first.L=first; first.R=first; }
+      else { node.R=first; node.L=first.L; first.L.R=node; first.L=node; }
+    });
   }
-  // build rows for each possible placement
-  for(let r=0; r<9; r++){
-    for(let c=0; c<9; c++){
-      const v = grid[r][c];
-      for(let n=1;n<=9;n++){
-        if(v!==0 && v!==n) continue;
-        const rowID = {r,c,n};
-        const cols = [];
-        cols.push(r*9 + c);                 // cell constraint
-        cols.push(81 + r*9 + (n-1));        // row# constraint
-        cols.push(162 + c*9 + (n-1));       // col# constraint
-        const b = Math.floor(r/3)*3 + Math.floor(c/3);
-        cols.push(243 + b*9 + (n-1));       // block# constraint
-        addRow(rowID, cols);
+  for (let r=0;r<9;r++){
+    for (let c=0;c<9;c++){
+      const v = orig[r][c];
+      for (let n=1;n<=9;n++){
+        if (v!==0 && n!==v) continue;
+        const b = Math.floor(r/3)*3+Math.floor(c/3);
+        addRow(r,c,n,[
+          r*9+c,
+          81 + r*9+(n-1),
+          162 + c*9+(n-1),
+          243 + b*9+(n-1)
+        ]);
       }
     }
   }
   return {header};
 }
-function cover(col){
-  col.right.left = col.left;
-  col.left.right = col.right;
-  for(let i=col.down; i!==col; i=i.down){
-    for(let j=i.right; j!==i; j=j.right){
-      j.down.up = j.up;
-      j.up.down = j.down;
-      j.column.size--;
+function cover(c) {
+  c.R.L=c.L; c.L.R=c.R;
+  for (let i=c.D;i!==c;i=i.D) {
+    for (let j=i.R;j!==i;j=j.R){
+      j.D.U=j.U; j.U.D=j.D; j.C.size--;
     }
   }
 }
-function uncover(col){
-  for(let i=col.up; i!==col; i=i.up){
-    for(let j=i.left; j!==i; j=j.left){
-      j.column.size++;
-      j.down.up = j;
-      j.up.down = j;
+function uncover(c) {
+  for (let i=c.U;i!==c;i=i.U){
+    for (let j=i.L;j!==i;j=j.L){
+      j.C.size++; j.D.U=j; j.U.D=j;
     }
   }
-  col.right.left = col;
-  col.left.right = col;
+  c.R.L=c; c.L.R=c;
 }
-let dlxSolution = null, dlxOps = 0;
-function searchDLX(header, solution){
-  if(header.right === header){
-    dlxSolution = solution.slice();
-    return true;
-  }
-  // choose smallest column
-  let c = header.right;
-  let s = c.size;
-  for(let j=c.right; j!==header; j=j.right){
-    if(j.size < s){ c=j; s=j.size; }
-  }
+let dlxSol=null;
+function searchDLX(h, k, sol) {
+  if (h.R===h){ dlxSol=[...sol]; return true; }
+  let c=h.R, min=c.size;
+  for (let j=c.R;j!==h;j=j.R) if(j.size<min){c=j;min=j.size;}
   cover(c);
-  for(let r=c.down; r!==c; r=r.down){
-    solution.push(r);
-    for(let j=r.right; j!==r; j=j.right){
-      cover(j.column);
-      dlxOps++;
-    }
-    if(searchDLX(header, solution)) return true;
-    solution.pop();
-    for(let j=r.left; j!==r; j=j.left){
-      uncover(j.column);
-    }
+  for (let r=c.D;r!==c;r=r.D){
+    sol.push(r);
+    for (let j=r.R;j!==r;j=j.R){ cover(j.C); }
+    if (searchDLX(h,k+1,sol)) return true;
+    sol.pop();
+    for (let j=r.L;j!==r;j=j.L){ uncover(j.C); }
   }
   uncover(c);
   return false;
 }
-function dlxSolve(origGrid){
-  const grid = origGrid.map(r=>r.slice());
+function dlxSolve(orig) {
+  const grid = orig.map(r=>r.slice());
   const {header} = buildDLX(grid);
-  dlxSolution = null; dlxOps = 0;
-  const t0 = performance.now();
-  searchDLX(header, []);
-  const t1 = performance.now();
-  // build result grid
-  const res = Array.from({length:9}, ()=>Array(9).fill(0));
-  if(dlxSolution){
-    for(const node of dlxSolution){
-      const {r,c,n} = node.rowID;
-      res[r][c] = n;
-    }
+  dlxSol=null;
+  const t0=performance.now();
+  searchDLX(header,0,[]);
+  const t1=performance.now();
+  const res=Array.from({length:9},()=>Array(9).fill(0));
+  if (dlxSol){
+    dlxSol.forEach(node=>{
+      res[node.row][node.col]=node.num;
+    });
   }
-  return { grid: res, time: (t1-t0).toFixed(2), ops: dlxOps };
+  return {grid:res, time:(t1-t0).toFixed(2), ops:dlxSol?dlxSol.length:0};
 }
 
-/***** UI Logic *****/
+// === UI wiring ===
 const puzzleSelect = document.getElementById("puzzleSelect");
-const loadBtn = document.getElementById("loadPuzzleBtn");
-const solveBtn = document.getElementById("solveBtn");
+const loadBtn       = document.getElementById("loadPuzzleBtn");
+const solveBtn      = document.getElementById("solveBtn");
 
-// populate dropdown
+// Populate dropdown
 puzzles.forEach((p,i)=>{
-  const opt = document.createElement("option");
-  opt.value = i;
-  opt.textContent = p.name;
+  const opt=document.createElement("option");
+  opt.value=i; opt.textContent=p.name;
   puzzleSelect.appendChild(opt);
 });
 
-let currentGrid = null;
-loadBtn.onclick = () => {
-  const p = puzzles[puzzleSelect.value];
-  currentGrid = parsePuzzle(p.str);
-  renderGrid(currentGrid, "inputGrid");
+let current=null;
+loadBtn.onclick = ()=>{
+  current = parsePuzzle(puzzles[puzzleSelect.value].str);
+  renderGrid(current,"inputGrid");
   document.getElementById("btGrid").innerHTML = "";
   document.getElementById("dlxGrid").innerHTML = "";
-  document.getElementById("btInfo").textContent = "";
-  document.getElementById("dlxInfo").textContent = "";
+  document.getElementById("btInfo").textContent="";
+  document.getElementById("dlxInfo").textContent="";
+};
+solveBtn.onclick = ()=>{
+  if (!current) return alert("Load a puzzle first!");
+  const bt = backtrackingSolve(current);
+  renderGrid(bt.grid,"btGrid");
+  document.getElementById("btInfo").textContent = `Time: ${bt.time} ms | Calls: ${bt.calls}`;
+  const dx = dlxSolve(current);
+  renderGrid(dx.grid,"dlxGrid");
+  document.getElementById("dlxInfo").textContent = `Time: ${dx.time} ms | Ops: ${dx.ops}`;
 };
 
-solveBtn.onclick = () => {
-  if(!currentGrid) return alert("Load a puzzle first!");
-  // Backtracking
-  const btRes = backtrackingSolve(currentGrid);
-  renderGrid(btRes.grid, "btGrid");
-  document.getElementById("btInfo").textContent =
-    `Time: ${btRes.time} ms | Calls: ${btRes.calls}`;
-
-  // DLX
-  const dlxRes = dlxSolve(currentGrid);
-  renderGrid(dlxRes.grid, "dlxGrid");
-  document.getElementById("dlxInfo").textContent =
-    `Time: ${dlxRes.time} ms | Operations: ${dlxRes.ops}`;
-};
-
-// auto-load first puzzle
+// auto-load first
 loadBtn.click();
 </script>
 
