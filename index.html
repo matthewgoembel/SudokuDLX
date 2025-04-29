@@ -330,15 +330,49 @@ loadBtn.onclick=()=>{
   document.getElementById("btInfo").textContent="";
   document.getElementById("dlxInfo").textContent="";
 };
-solveBtn.onclick=()=>{
-  if(!current) return alert("Load a puzzle first!");
-  const bt=backtrackingSolve(current);
-  renderGrid(bt.grid,"btGrid");
-  document.getElementById("btInfo").textContent=`Avg Time: ${bt.time} ms | Avg Calls: ${bt.calls}`;
-  const dx=dlxSolve(current);
-  renderGrid(dx.grid,"dlxGrid");
-  document.getElementById("dlxInfo").textContent=`Avg Time: ${dx.time} ms | Avg Ops: ${dx.ops}`;
+solveBtn.onclick = () => {
+  if (!current) return alert("Load a puzzle first!");
+
+  // BACKTRACKING: average time, but single-run calls
+  let btTotal = 0, btCallsFirst = 0, btResult;
+  for (let i = 0; i < 50; i++) {
+    const grid = current.map(r => r.slice());
+    btCalls = 0;
+    const t0 = performance.now();
+    solveBT(grid);
+    const t1 = performance.now();
+    if (i === 0) btCallsFirst = btCalls, btResult = grid;
+    btTotal += (t1 - t0);
+  }
+  const btAvgTime = (btTotal / 50).toFixed(2);
+
+  // DLX: average time, but single-run ops
+  let dlxTotal = 0, dlxOpsFirst = 0, dlxResult;
+  for (let i = 0; i < 50; i++) {
+    const grid = current.map(r => r.slice());
+    dlxSol = null;
+    const t0 = performance.now();
+    searchDLX(buildDLX(grid).header, 0, []);
+    const t1 = performance.now();
+    if (i === 0) dlxOpsFirst = dlxSol.length, dlxResult = (() => {
+      let res = Array.from({length:9},()=>Array(9).fill(0));
+      dlxSol.forEach(n=>res[n.row][n.col]=n.num);
+      return res;
+    })();
+    dlxTotal += (t1 - t0);
+  }
+  const dlxAvgTime = (dlxTotal / 50).toFixed(2);
+
+  // Render results
+  renderGrid(btResult, "btGrid");
+  document.getElementById("btInfo").textContent =
+    `Avg Time: ${btAvgTime} ms | Calls: ${btCallsFirst}`;
+
+  renderGrid(dlxResult, "dlxGrid");
+  document.getElementById("dlxInfo").textContent =
+    `Avg Time: ${dlxAvgTime} ms | Ops: ${dlxOpsFirst}`;
 };
+
 
 // auto-load first
 loadBtn.click();
