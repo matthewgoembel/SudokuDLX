@@ -5,12 +5,13 @@
   <title>Sudoku Solver Comparison</title>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
   <style>
-    /* === Tech‐themed Animated Grid Background === */
+    /* === Styles (unchanged) === */
     html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; }
     body {
       font-family:'Orbitron',sans-serif;
       background:radial-gradient(circle at center,#1f1c2c,#000);
       color:#eee; display:flex; flex-direction:column; align-items:center;
+      position:relative;
     }
     body::before {
       content:""; position:absolute; top:0; left:0; width:100%; height:100%;
@@ -22,7 +23,6 @@
       pointer-events:none; z-index:-1;
     }
     @keyframes moveGrid { from{background-position:0 0;} to{background-position:40px 40px;} }
-
     h1 { margin:20px 0; font-size:2.5em; text-shadow:0 0 10px #8acdea,0 0 20px #8acdea; }
     .controls { margin-bottom:20px; }
     select, button {
@@ -31,8 +31,7 @@
       padding:8px 16px; margin:0 8px; border-radius:4px;
       box-shadow:0 0 5px rgba(138,205,234,0.7); cursor:pointer; transition:all .3s ease;
     }
-    select:hover, button:hover { background:#8acdea; color:#2a1a3d; box-shadow:0 0 15px #8acdea; }
-
+    select:hover,button:hover { background:#8acdea; color:#2a1a3d; box-shadow:0 0 15px #8acdea; }
     .container {
       display:flex; flex-wrap:wrap; justify-content:center;
       gap:40px; width:100%; flex-grow:1; overflow-y:auto; padding-bottom:20px;
@@ -85,59 +84,231 @@
     </div>
   </div>
 
-<script>
-// === Hard‐coded puzzles ===
-const puzzles = [
-  {
-    name: "Easy (40 clues)",
-    str:  "500678900672095008000300067859060023020003001703900800900000200080010605345280079"
-  },
-  {
-    name: "Medium (32 clues)",
-    str:  "003020600900305001001806400008102900700000008006708200002609500800203009005010300"
-  },
-  {
-    name: "Hard (17 clues)",
-    str:  "000000002000006000001000090000100000000800000000030000040000700000200000300000000"
-  }
-];
+  <script>
+    // === Hard-coded puzzles (must be at top of script!) ===
+    const puzzles = [
+      {
+        name: "Easy (40 clues)",
+        str:  "500678900672095008000300067859060023020003001703900800900000200080010605345280079"
+      },
+      {
+        name: "Medium (32 clues)",
+        str:  "003020600900305001001806400008102900700000008006708200002609500800203009005010300"
+      },
+      {
+        name: "Hard (17 clues)",
+        str:  "000000002000006000001000090000100000000800000000030000040000700000200000300000000"
+      }
+    ];
 
-// === Utility: parse string → 9×9 grid ===
-function parsePuzzle(s) {
-  const g = [];
-  for (let r = 0; r < 9; r++) {
-    g[r] = [];
-    for (let c = 0; c < 9; c++) {
-      g[r][c] = s[r*9 + c] === '0' ? 0 : +s[r*9 + c];
+    // === Utility functions ===
+    function parsePuzzle(s) {
+      const g = [];
+      for (let r = 0; r < 9; r++) {
+        g[r] = [];
+        for (let c = 0; c < 9; c++) {
+          g[r][c] = s[r*9 + c] === '0' ? 0 : +s[r*9 + c];
+        }
+      }
+      return g;
     }
-  }
-  return g;
-}
 
-// === Utility: render 9×9 grid into table#id ===
-function renderGrid(g, id) {
-  const tbl = document.getElementById(id);
-  tbl.innerHTML = "";
-  for (let r = 0; r < 9; r++) {
-    const row = tbl.insertRow();
-    for (let c = 0; c < 9; c++) {
-      const cell = row.insertCell();
-      cell.textContent = g[r][c] || "";
-      if (r % 3 === 0) cell.classList.add("thick-border-top");
-      if (c % 3 === 0) cell.classList.add("thick-border-left");
-      if (c === 8)      cell.classList.add("thick-border-right");
-      if (r === 8)      cell.classList.add("thick-border-bot");
+    function renderGrid(g, id) {
+      const tbl = document.getElementById(id);
+      tbl.innerHTML = "";
+      for (let r = 0; r < 9; r++) {
+        const row = tbl.insertRow();
+        for (let c = 0; c < 9; c++) {
+          const cell = row.insertCell();
+          cell.textContent = g[r][c] || "";
+          if (r % 3 === 0) cell.classList.add("thick-border-top");
+          if (c % 3 === 0) cell.classList.add("thick-border-left");
+          if (c === 8)      cell.classList.add("thick-border-right");
+          if (r === 8)      cell.classList.add("thick-border-bot");
+        }
+      }
     }
-  }
-}
 
-// --- Backtracking solver (mirrors your Java) ---
-let btCalls = 0;
-function validBT(g, r, c, v) {
-  for (let i = 0; i < 9; i++) {
-    if (g[r][i] === v || g[i][c] === v) return false;
-  }
-  const br = Math.floor(r/3)*3, bc = Math.floor(c/3)*3;
-  for (let i = 0; i < 3; i++)
-    for (let j = 0; j < 3; j++)
-      if (
+    // --- Backtracking Solver ---
+    let btCalls = 0;
+    function validBT(g, r, c, v) {
+      for (let i = 0; i < 9; i++) {
+        if (g[r][i] === v || g[i][c] === v) return false;
+      }
+      const br = Math.floor(r/3)*3, bc = Math.floor(c/3)*3;
+      for (let i = 0; i < 3; i++)
+        for (let j = 0; j < 3; j++)
+          if (g[br+i][bc+j] === v) return false;
+      return true;
+    }
+
+    function solveBT(g) {
+      btCalls++;
+      for (let r = 0; r < 9; r++) {
+        for (let c = 0; c < 9; c++) {
+          if (g[r][c] === 0) {
+            for (let n = 1; n <= 9; n++) {
+              if (validBT(g, r, c, n)) {
+                g[r][c] = n;
+                if (solveBT(g)) return true;
+                g[r][c] = 0;
+              }
+            }
+            return false;
+          }
+        }
+      }
+      return true;
+    }
+
+    // --- DLX Solver ---
+    class DLXNode {
+      constructor() { this.L=this; this.R=this; this.U=this; this.D=this; this.C=null; }
+    }
+    class ColumnNode extends DLXNode {
+      constructor(name) {
+        super();
+        this.name = name;
+        this.size = 0;
+        this.C = this;
+      }
+    }
+
+    function buildDLX(orig) {
+      const header = new ColumnNode("h");
+      header.L = header; header.R = header;
+      const cols = [];
+      for (let i = 0; i < 324; i++) {
+        const c = new ColumnNode(i);
+        cols.push(c);
+        c.R = header; c.L = header.L; header.L.R = c; header.L = c;
+        c.U = c; c.D = c;
+      }
+
+      function addRow(r, c, n, idx) {
+        let first = null;
+        idx.forEach(ci => {
+          const col = cols[ci];
+          const node = new DLXNode();
+          node.C = col; node.row = r; node.col = c; node.num = n;
+          // vertical link
+          node.D = col; node.U = col.U; col.U.D = node; col.U = node; col.size++;
+          // horizontal link
+          if (!first) {
+            first = node; first.L = node; first.R = node;
+          } else {
+            node.R = first; node.L = first.L; first.L.R = node; first.L = node;
+          }
+        });
+      }
+
+      for (let r = 0; r < 9; r++) {
+        for (let c = 0; c < 9; c++) {
+          const v = orig[r][c];
+          for (let n = 1; n <= 9; n++) {
+            if (v !== 0 && n !== v) continue;
+            const b = Math.floor(r/3)*3 + Math.floor(c/3);
+            addRow(r, c, n, [
+              r*9 + c,
+              81  + r*9 + (n-1),
+              162 + c*9 + (n-1),
+              243 + b*9 + (n-1)
+            ]);
+          }
+        }
+      }
+      return { header };
+    }
+
+    let dlxSteps = 0;
+    function cover(col) {
+      col.R.L = col.L; col.L.R = col.R;
+      for (let r = col.D; r !== col; r = r.D) {
+        for (let j = r.R; j !== r; j = j.R) {
+          j.D.U = j.U; j.U.D = j.D; j.C.size--;
+        }
+      }
+    }
+
+    function uncover(col) {
+      for (let r = col.U; r !== col; r = r.U) {
+        for (let j = r.L; j !== r; j = j.L) {
+          j.C.size++; j.D.U = j; j.U.D = j;
+        }
+      }
+      col.R.L = col; col.L.R = col;
+    }
+
+    function searchDLX(h) {
+      dlxSteps++;
+      if (h.R === h) return true;
+      let col = h.R, min = col.size;
+      for (let j = col.R; j !== h; j = j.R) {
+        if (j.size < min) { col = j; min = j.size; }
+      }
+      if (min === 0) return false;
+      cover(col);
+      for (let r = col.D; r !== col; r = r.D) {
+        for (let j = r.R; j !== r; j = j.R) cover(j.C);
+        if (searchDLX(h)) return true;
+        for (let j = r.L; j !== r; j = j.L) uncover(j.C);
+      }
+      uncover(col);
+      return false;
+    }
+
+    // --- UI Wiring ---
+    document.addEventListener("DOMContentLoaded", () => {
+      const puzzleSelect = document.getElementById("puzzleSelect");
+      const loadBtn      = document.getElementById("loadPuzzleBtn");
+      const solveBtn     = document.getElementById("solveBtn");
+
+      // populate dropdown
+      puzzles.forEach((p, i) => {
+        const opt = document.createElement("option");
+        opt.value = i;
+        opt.textContent = p.name;
+        puzzleSelect.appendChild(opt);
+      });
+
+      let current = null;
+      loadBtn.onclick = () => {
+        current = parsePuzzle(puzzles[puzzleSelect.value].str);
+        renderGrid(current, "inputGrid");
+        document.getElementById("btGrid").innerHTML = "";
+        document.getElementById("dlxGrid").innerHTML = "";
+        document.getElementById("btInfo").textContent = "";
+        document.getElementById("dlxInfo").textContent = "";
+      };
+
+      solveBtn.onclick = () => {
+        if (!current) return alert("Load a puzzle first!");
+
+        // Backtracking
+        btCalls = 0;
+        const btGrid = JSON.parse(JSON.stringify(current));
+        const t0 = performance.now();
+        solveBT(btGrid);
+        const t1 = performance.now();
+        renderGrid(btGrid, "btGrid");
+        document.getElementById("btInfo").textContent =
+          `Time: ${(t1 - t0).toFixed(2)} ms | Calls: ${btCalls}`;
+
+        // Dancing Links
+        dlxSteps = 0;
+        const dlxGrid = JSON.parse(JSON.stringify(current));
+        const { header } = buildDLX(dlxGrid);
+        const t2 = performance.now();
+        searchDLX(header);
+        const t3 = performance.now();
+        renderGrid(dlxGrid, "dlxGrid");
+        document.getElementById("dlxInfo").textContent =
+          `Time: ${(t3 - t2).toFixed(2)} ms | Steps: ${dlxSteps}`;
+      };
+
+      // auto-load first puzzle
+      loadBtn.click();
+    });
+  </script>
+</body>
+</html>
