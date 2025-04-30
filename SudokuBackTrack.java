@@ -1,4 +1,3 @@
-// SudokuBackTrack.java
 public class SudokuBackTrack implements SudokuSolver {
 
     private long calls;  // count of recursive calls
@@ -11,7 +10,7 @@ public class SudokuBackTrack implements SudokuSolver {
         return board;
     }
 
-    /** Returns number of recursive calls made. */
+    /** Number of times solveRec() was invoked. */
     public long getCalls() {
         return calls;
     }
@@ -30,12 +29,10 @@ public class SudokuBackTrack implements SudokuSolver {
                             board.set(r, c, 0);
                         }
                     }
-                    // no valid number -> backtrack
-                    return false;
+                    return false; // dead end
                 }
             }
         }
-        // no empty cell left -> solved
-        return true;
+        return true; // solved
     }
 }
