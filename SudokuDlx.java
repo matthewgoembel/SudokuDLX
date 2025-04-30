@@ -1,9 +1,8 @@
-// SudokuDlx.java
 import java.util.*;
 
 public class SudokuDlx implements SudokuSolver {
 
-    private long STEPS;  // count of cover/uncover steps (calls to search)
+    private long linkUpdates;  // count of pointer/size updates
 
     private class Node {
         Node left, right, up, down;
@@ -26,14 +25,12 @@ public class SudokuDlx implements SudokuSolver {
 
     @Override
     public SudokuBoard solve(SudokuBoard puzzle) {
-        STEPS = 0;
-        int size = SudokuBoard.SIZE;
-        int[][] board = new int[size][size];
-        for (int r = 0; r < size; r++) {
-            for (int c = 0; c < size; c++) {
+        linkUpdates = 0;
+        int[][] board = new int[9][9];
+        for (int r = 0; r < 9; r++)
+            for (int c = 0; c < 9; c++)
                 board[r][c] = puzzle.get(r, c);
-            }
-        }
+
         header = buildMatrix(board);
         solution = new Node[81];
         int[][] result = hardCopy(board);
@@ -41,80 +38,75 @@ public class SudokuDlx implements SudokuSolver {
         return new SudokuBoard(result);
     }
 
-    /** Returns the total number of steps (search calls). */
-    public long getSteps() {
-        return STEPS;
+    /** Returns total number of pointer/size updates performed. */
+    public long getLinkUpdates() {
+        return linkUpdates;
     }
 
     private ColumnNode buildMatrix(int[][] board) {
-        int COLS = 324;
         ColumnNode root = new ColumnNode("root");
-        ColumnNode[] columns = new ColumnNode[COLS];
+        ColumnNode[] cols = new ColumnNode[324];
         ColumnNode prev = root;
-        for (int i = 0; i < COLS; i++) {
+        // create headers
+        for (int i = 0; i < 324; i++) {
             ColumnNode col = new ColumnNode("C" + i);
-            columns[i] = col;
-            col.left = prev;
-            col.right = root;
-            prev.right = col;
-            root.left = col;
+            cols[i] = col;
+            col.left = prev; linkUpdates++;
+            col.right = root; linkUpdates++;
+            prev.right = col; linkUpdates++;
+            root.left = col; linkUpdates++;
             prev = col;
         }
+        // add rows
         for (int r = 0; r < 9; r++) {
-            for(int c = 0; c < 9; c++) {
-                int val = board[r][c];
-                if (val != 0) {
-                    addRow(columns, r, c, val);
-                } else {
-                    for (int n = 1; n <= 9; n++) {
-                        addRow(columns, r, c, n);
-                    }
-                }
+            for (int c = 0; c < 9; c++) {
+                int v = board[r][c];
+                if (v != 0) addRow(cols, r, c, v);
+                else for (int n = 1; n <= 9; n++) addRow(cols, r, c, n);
             }
         }
         return root;
     }
 
     private void addRow(ColumnNode[] cols, int r, int c, int n) {
-        int[] colIndices = new int[]{
-            r * 9 + c,
-            81 + r * 9 + (n - 1),
-            162 + c * 9 + (n - 1),
-            243 + ((r / 3) * 3 + (c / 3)) * 9 + (n - 1)
+        int[] idx = new int[]{
+            r*9 + c,
+            81  + r*9 + (n - 1),
+            162 + c*9 + (n - 1),
+            243 + ((r/3)*3 + (c/3))*9 + (n - 1)
         };
         Node first = null;
-        for (int idx : colIndices) {
-            ColumnNode col = cols[idx];
+        for (int ci : idx) {
+            ColumnNode col = cols[ci];
             Node node = new Node();
             node.column = col;
             node.rowIndex = r;
             node.colIndex = c;
             node.num = n;
-            // vertical link
-            node.down = col;
-            node.up = col.up;
-            col.up.down = node;
-            col.up = node;
-            col.size++;
+            // vertical link: node between col.up and col
+            node.down = col; linkUpdates++;
+            node.up   = col.up; linkUpdates++;
+            col.up.down = node; linkUpdates++;
+            col.up = node; linkUpdates++;
+            col.size--;  // no, actually this is an insertion, so increment
+            col.size++; linkUpdates++;
             // horizontal link
             if (first == null) {
                 first = node;
-                node.left = node;
-                node.right = node;
+                node.left = node; linkUpdates++;
+                node.right = node; linkUpdates++;
             } else {
-                node.left = first.left;
-                node.right = first;
-                first.left.right = node;
-                first.left = node;
+                node.right = first; linkUpdates++;
+                node.left  = first.left; linkUpdates++;
+                first.left.right = node; linkUpdates++;
+                first.left = node; linkUpdates++;
             }
         }
     }
 
     private boolean search(int k, int[][] board) {
-        STEPS++;
         if (header.right == header) return true;
         ColumnNode col = selectColumn();
-        if (col.size == 0) return false;
         cover(col);
         for (Node row = col.down; row != col; row = row.down) {
             solution[k] = row;
@@ -137,41 +129,43 @@ public class SudokuDlx implements SudokuSolver {
         ColumnNode best = null;
         for (ColumnNode c = (ColumnNode) header.right; c != header; c = (ColumnNode) c.right) {
             if (c.size < min) {
-                min = c.size;
-                best = c;
+                min = c.size; best = c;
             }
         }
         return best;
     }
 
     private void cover(ColumnNode col) {
-        col.right.left = col.left;
-        col.left.right = col.right;
-        for (Node row = col.down; row != col; row = row.down) {
-            for (Node j = row.right; j != row; j = j.right) {
-                j.down.up = j.up;
-                j.up.down = j.down;
-                j.column.size--;
+        // remove header
+        col.right.left = col.left; linkUpdates++;
+        col.left.right = col.right; linkUpdates++;
+        // remove rows
+        for (Node r = col.down; r != col; r = r.down) {
+            for (Node j = r.right; j != r; j = j.right) {
+                j.down.up = j.up; linkUpdates++;
+                j.up.down = j.down; linkUpdates++;
+                j.column.size--; linkUpdates++;
             }
         }
     }
 
     private void uncover(ColumnNode col) {
-        for (Node row = col.up; row != col; row = row.up) {
-            for (Node j = row.left; j != row; j = j.left) {
-                j.column.size++;
-                j.down.up = j;
-                j.up.down = j;
+        for (Node r = col.up; r != col; r = r.up) {
+            for (Node j = r.left; j != r; j = j.left) {
+                j.column.size++; linkUpdates++;
+                j.down.up = j; linkUpdates++;
+                j.up.down = j; linkUpdates++;
             }
         }
-        col.right.left = col;
-        col.left.right = col;
+        col.right.left = col; linkUpdates++;
+        col.left.right = col; linkUpdates++;
     }
 
-    private int[][] hardCopy(int[][] original) {
+    private int[][] hardCopy(int[][] orig) {
         int[][] copy = new int[9][9];
-        for (int i = 0; i < 9; i++)
-            System.arraycopy(original[i], 0, copy[i], 0, 9);
-        return copy;    
+        for (int i = 0; i < 9; i++) {
+            System.arraycopy(orig[i], 0, copy[i], 0, 9);
+        }
+        return copy;
     }
 }
