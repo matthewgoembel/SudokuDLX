@@ -1,4 +1,3 @@
-// SudokuApp.java
 import java.util.List;
 
 public class SudokuApp {
@@ -7,25 +6,31 @@ public class SudokuApp {
 
         for (int i = 0; i < puzzles.size(); i++) {
             SudokuBoard puzzle = puzzles.get(i);
-            System.out.println("=== Puzzle " + (i + 1) + " ===");
+            System.out.println("=== Puzzle " + (i + 1) + ": " + HardcodedPuzzles.getNames().get(i) + " ===");
             System.out.println(puzzle);
 
             // Backtracking
-            SudokuSolver btSolver = new SudokuBackTrack();
-            long t0 = System.nanoTime();  // NanoTime for more precision
+            SudokuBackTrack btSolver = new SudokuBackTrack();
+            long t0 = System.nanoTime();
             SudokuBoard btSolution = btSolver.solve(puzzle.copy());
             long t1 = System.nanoTime();
-            double dtMs = (t1 - t0) / 1_000_000.0;  
-            System.out.printf("--- Backtracking (ms): %.5f\n", dtMs);  // 5 decimals
+            double dtMs = (t1 - t0) / 1_000_000.0;
+            System.out.printf(
+              "--- Backtracking: Steps: %d, Time: %.5f ms%n",
+              btSolver.getCalls(), dtMs
+            );
             System.out.println(btSolution);
 
             // DLX
-            SudokuSolver dlxSolver = new SudokuDlx();
+            SudokuDlx dlxSolver = new SudokuDlx();
             t0 = System.nanoTime();
             SudokuBoard dlxSolution = dlxSolver.solve(puzzle.copy());
             t1 = System.nanoTime();
             double dt2Ms = (t1 - t0) / 1_000_000.0;
-            System.out.printf("--- DLX (ms): %.5f\n", dt2Ms); 
+            System.out.printf(
+              "--- DLX: Steps: %d, Time: %.5f ms%n",
+              dlxSolver.getSteps(), dt2Ms
+            );
             System.out.println(dlxSolution);
         }
     }
