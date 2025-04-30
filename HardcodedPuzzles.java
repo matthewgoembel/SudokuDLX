@@ -17,16 +17,12 @@ public class HardcodedPuzzles {
         "000000002000006000001000090000100000000800000000030000040000700000200000300000000"
     };
 
-    /** Returns the three puzzle names. */
     public static List<String> getNames() {
         List<String> names = new ArrayList<>();
-        for (String n : PUZZLE_NAMES) {
-            names.add(n);
-        }
+        for (String n : PUZZLE_NAMES) names.add(n);
         return names;
     }
 
-    /** Returns a list of SudokuBoard instances for each hard-coded puzzle. */
     public static List<SudokuBoard> getPuzzles() {
         List<SudokuBoard> list = new ArrayList<>();
         for (String s : PUZZLE_STRINGS) {
