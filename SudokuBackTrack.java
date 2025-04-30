@@ -1,15 +1,23 @@
 // SudokuBackTrack.java
 public class SudokuBackTrack implements SudokuSolver {
 
+    private long calls;  // count of recursive calls
+
     @Override
     public SudokuBoard solve(SudokuBoard puzzle) {
-        // work on a copy so we don't mutate the original
+        calls = 0;
         SudokuBoard board = puzzle.copy();
         solveRec(board);
         return board;
     }
 
+    /** Returns number of recursive calls made. */
+    public long getCalls() {
+        return calls;
+    }
+
     private boolean solveRec(SudokuBoard board) {
+        calls++;
         for (int r = 0; r < SudokuBoard.SIZE; r++) {
             for (int c = 0; c < SudokuBoard.SIZE; c++) {
                 if (board.get(r, c) == 0) {
