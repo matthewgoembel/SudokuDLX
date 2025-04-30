@@ -3,35 +3,36 @@ import java.util.List;
 public class SudokuApp {
     public static void main(String[] args) {
         List<SudokuBoard> puzzles = HardcodedPuzzles.getPuzzles();
+        List<String> names   = HardcodedPuzzles.getNames();
 
         for (int i = 0; i < puzzles.size(); i++) {
             SudokuBoard puzzle = puzzles.get(i);
-            System.out.println("=== Puzzle " + (i + 1) + ": " + HardcodedPuzzles.getNames().get(i) + " ===");
+            System.out.println("=== Puzzle " + (i+1) + ": " + names.get(i) + " ===");
             System.out.println(puzzle);
 
             // Backtracking
-            SudokuBackTrack btSolver = new SudokuBackTrack();
+            SudokuBackTrack bt = new SudokuBackTrack();
             long t0 = System.nanoTime();
-            SudokuBoard btSolution = btSolver.solve(puzzle.copy());
+            SudokuBoard solBt = bt.solve(puzzle.copy());
             long t1 = System.nanoTime();
-            double dtMs = (t1 - t0) / 1_000_000.0;
+            double dtBt = (t1 - t0) / 1_000_000.0;
             System.out.printf(
-              "--- Backtracking: Steps: %d, Time: %.5f ms%n",
-              btSolver.getCalls(), dtMs
+              "--- Backtracking: recursive calls = %d, time = %.5f ms%n",
+              bt.getCalls(), dtBt
             );
-            System.out.println(btSolution);
+            System.out.println(solBt);
 
             // DLX
-            SudokuDlx dlxSolver = new SudokuDlx();
+            SudokuDlx dlx = new SudokuDlx();
             t0 = System.nanoTime();
-            SudokuBoard dlxSolution = dlxSolver.solve(puzzle.copy());
+            SudokuBoard solDlx = dlx.solve(puzzle.copy());
             t1 = System.nanoTime();
-            double dt2Ms = (t1 - t0) / 1_000_000.0;
+            double dtDlx = (t1 - t0) / 1_000_000.0;
             System.out.printf(
-              "--- DLX: Steps: %d, Time: %.5f ms%n",
-              dlxSolver.getSteps(), dt2Ms
+              "--- DLX: link updates = %d, time = %.5f ms%n",
+              dlx.getLinkUpdates(), dtDlx
             );
-            System.out.println(dlxSolution);
+            System.out.println(solDlx);
         }
     }
 }
